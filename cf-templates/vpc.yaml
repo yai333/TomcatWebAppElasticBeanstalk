@@ -188,7 +188,7 @@ Resources:
                   - "ec2:Describe*"
                 Effect: Allow
                 Resource: "*"
-  #Security Groups for the three tiered network architecture
+
   PublicSG:
     Type: AWS::EC2::SecurityGroup
     Properties:
