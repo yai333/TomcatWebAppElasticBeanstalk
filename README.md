@@ -26,7 +26,7 @@ App is deployed Elastic Beanstalk environment, Statics files and DB files are st
 
 ## How does deploy work
 
-![deploy flow](stcf-flow.png)
+![deploy flow](cf-flow.png)
 
 ### 1. Deploy S3 Artifacts, upload artifacts files to be used by Elastic Beanstalk
 
