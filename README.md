@@ -62,7 +62,7 @@ aws s3 cp YOUR_DB_FILE s3://DEPLOYED_S3_BUCKET/java
 
 #### 5. Deploy `.war` from S3 to AWS Elastic Beanstalk
 
-Simply run below commend with grgument: -d training|production:
+Simply run below commend with agrgument: `-d` training|production:
 
 ```
 $bash deploy.sh -d production
