@@ -1,6 +1,6 @@
 # cloudformation-elastic-beanstalk-samples
 
-This repo contains a collection of AWS CloudFormation templates intended to help you deploy Java Tomcat `.war` on Elastic Beanstalk and integrate with Amazon EFS for persistange storage.
+This repo contains CloudFormation templates intended to help you deploy Java Tomcat `.war` on Elastic Beanstalk and integrate with Amazon EFS as persistange storage.
 
 ### Elasticbeanstalk
 
