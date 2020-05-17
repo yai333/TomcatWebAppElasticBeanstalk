@@ -16,7 +16,7 @@ The following must be done before following this guide:
 
 ## Overview of the Stack
 
-![stak overview](stack.png)
+![stak overview](images/stack.png)
 
 There are two environments one for training and one for production, training and produciton environments are divided in separate stack (VPC, EB Stack, S3, EFS...).
 
@@ -26,7 +26,7 @@ App is deployed Elastic Beanstalk environment, Statics files and DB files are st
 
 ## How does deploy work
 
-![deploy flow](cf-flow.png)
+![deploy flow](images/cf-flow.png)
 
 ### 1. Deploy S3 Artifacts, upload artifacts files to be used by Elastic Beanstalk
 
@@ -76,4 +76,4 @@ You can change autoscalling configuration to reduce of enhance availability and 
 
 Alternatively you can go to AWS Autoscaling console, manually set the Desired Capacity, Min or Max value.
 
-![screenshot](asf_fleet_mod_1.png)
+![screenshot](images/asf_fleet_mod_1.png)
