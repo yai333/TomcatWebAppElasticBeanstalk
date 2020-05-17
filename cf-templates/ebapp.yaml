@@ -291,7 +291,7 @@ Resources:
                     03_copy_db_file:
                       command: 'aws s3 cp s3://${EBBucket}/db ${EFS_MOUNT_DIR}/db'
                 - { EFS_MOUNT_DIR: "files" }
-              mode: 000500
+              mode: 000644
               owner: root
               group: root
             /tmp/mapping.config:
@@ -300,7 +300,7 @@ Resources:
                   - namespace: aws:elasticbeanstalk:environment:proxy:staticfiles
                     option_name: /static
                     value: /opt/elasticbeanstalk/eb_infra/files/static
-              mode: 000500
+              mode: 000644
               owner: root
               group: root
     Properties:
