@@ -1,3 +1,5 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Create VPC
 Resources:
   PublicVPC:
     Type: "AWS::EC2::VPC"

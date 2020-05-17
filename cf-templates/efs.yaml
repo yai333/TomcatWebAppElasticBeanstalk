@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: Create Elastic File System v20161029-1200
+Description: Create Elastic File System
 Parameters:
   ParentStackName:
     Type: String

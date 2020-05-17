@@ -1,3 +1,5 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Create artifacts S3 bucket
 Parameters:
   EnvType:
     Description: Environment type.
