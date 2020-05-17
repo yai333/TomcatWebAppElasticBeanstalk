@@ -16,7 +16,7 @@ The following must be done before following this guide:
 
 ## Overview of the Stack
 
-[stak overview]: stack.png
+![stak overview](stack.png)
 
 There are two environments one for training and one for production, training and produciton environments are divided in separate stack (VPC, EB Stack, S3, EFS...).
 
@@ -26,7 +26,7 @@ App is deployed Elastic Beanstalk environment, Statics files and DB files are st
 
 ## How does deploy work
 
-[deploy flow]: stcf-flow.png
+![deploy flow](stcf-flow.png)
 
 ### 1. Deploy S3 Artifacts, upload artifacts files to be used by Elastic Beanstalk
 
@@ -75,8 +75,13 @@ $bash deploy.sh
 - Limit production release to specfic IP ranges:
   You can add a <b>Inbound Rule</b> of Load balancer's security group, set specific IP to port 80 or 443.
 
-To get security group name of deployed Load balancer from previous steps, visist AWS conosole page, find you stack eg. webapp-production-vpc, click resources tab, find `PublicSG` and click the link to Security Group setting page.
-[Screenshot](sc-1.png)
+      To get security group name of deployed Load balancer from previous steps, visist AWS conosole page, find you stack eg. webapp-production-vpc, click resources tab, find `PublicSG` and click the link to Security Group setting page.
+
+  ![Screenshot](sc-1.png)
+
+  Update Inbound rule:
+  ![Screenshot](sc-2.png)
 
 - Use Blue/Green Deployement stragegy
-  Suppose you already have an early version running production environment, you want to deploy a new limited production envirnmnet. What you need is that deploy a new EB environment, whenever you want to move it to fully production, use Elastic Beanstalk <b>Swap URL</b> for environments, swap CNAMEs between limited production and production, that is all about it.
+
+        Suppose you already have an early version running production environment, you want to deploy a new limited production envirnmnet. What you need is that deploy a new EB environment, whenever you want to move it to fully production, use Elastic Beanstalk <b>Swap URL</b> for environments, swap CNAMEs between limited production and production, that is all about it.
