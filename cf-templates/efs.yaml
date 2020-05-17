@@ -1,0 +1,46 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Create Elastic File System v20161029-1200
+Parameters:
+  ParentStackName:
+    Type: String
+  PerformanceMode:
+    Type: String
+    Default: generalPurpose
+    AllowedValues:
+      - generalPurpose
+      - maxIO
+Resources:
+  FileSystem:
+    Type: AWS::EFS::FileSystem
+    Properties:
+      FileSystemTags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+        - Key: ParentStackName
+          Value: !Ref ParentStackName
+      PerformanceMode: !Ref PerformanceMode
+  MountTarget1:
+    Type: AWS::EFS::MountTarget
+    DependsOn:
+      - FileSystem
+    Properties:
+      FileSystemId: !Ref FileSystem
+      SubnetId:
+        Fn::ImportValue: !Sub "${ParentStackName}-PublicSubnet1ID"
+      SecurityGroups:
+        - Fn::ImportValue: !Sub "${ParentStackName}-AppSG"
+  MountTarget2:
+    Type: AWS::EFS::MountTarget
+    DependsOn:
+      - FileSystem
+    Properties:
+      FileSystemId: !Ref FileSystem
+      SubnetId:
+        Fn::ImportValue: !Sub "${ParentStackName}-PublicSubnet2ID"
+      SecurityGroups:
+        - Fn::ImportValue: !Sub "${ParentStackName}-AppSG"
+
+Outputs:
+  FileSystem:
+    Description: FileSystem
+    Value: !Ref FileSystem

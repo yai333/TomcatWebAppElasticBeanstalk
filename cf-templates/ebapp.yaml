@@ -1,0 +1,341 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: This CloudFormation Template deploys a complete Tomcat environment.
+
+Parameters:
+  ParentStackName:
+    Type: String
+  EfsID:
+    Type: String
+  WebAsgMax:
+    AllowedPattern: ^((?!0$)[1-2]?[0-9]|30)$
+    ConstraintDescription: Must be a number between 1 and 30.
+    Default: 5
+    Description: Specifies the maximum number of EC2 instances in the Web Autoscaling Group.
+    Type: String
+  WebAsgMin:
+    AllowedPattern: ^([0-0]?[0-9]|10)$
+    ConstraintDescription: Must be a number between 0 and 10.
+    Default: 1
+    Description: Specifies the minimum number of EC2 instances in the Web Autoscaling Group.
+    Type: String
+  WebInstanceType:
+    AllowedValues:
+      - t2.nano
+      - t2.micro
+      - t2.small
+      - t2.medium
+      - t2.large
+      - t2.xlarge
+      - t2.2xlarge
+      - m3.medium
+      - m3.large
+      - m3.xlarge
+      - m3.2xlarge
+      - m4.large
+      - m4.xlarge
+    ConstraintDescription: Must be a valid Amazon EC2 instance type.
+    Default: t2.micro
+    Description: The Amazon EC2 instance type for your web instances.
+    Type: String
+  EC2KeyName:
+    Description: The EC2 Key Pair to use for the Atlas/WebAPI EC2 Instances.
+    Type: AWS::EC2::KeyPair::KeyName
+  EBBucket:
+    Type: String
+    Description: "S3 Bucket used to store the application package for Elastic Beanstalk."
+  EnvType:
+    Description: Environment type.
+    Default: training
+    Type: String
+    AllowedValues: [production, training]
+    ConstraintDescription: must specify production, training.
+
+Conditions:
+  CreateProdResources: !Equals [!Ref EnvType, production]
+  CreateDevResources: !Equals [!Ref EnvType, training]
+
+Mappings:
+  RegionMap:
+    us-east-1:
+      AMI: "ami-0ff8a91507f77f867"
+    us-west-1:
+      AMI: "ami-0bdb828fd58c52235"
+    us-west-2:
+      AMI: "ami-a0cfeed8"
+    eu-west-1:
+      AMI: "ami-047bb4163c506cd98"
+    sa-east-1:
+      AMI: "ami-07b14488da8ea02a0"
+    ap-southeast-1:
+      AMI: "ami-08569b978cc4dfa10"
+    ap-southeast-2:
+      AMI: "ami-09b42976632b27e9b"
+
+Resources:
+  WebApp:
+    Type: "AWS::ElasticBeanstalk::Application"
+    DependsOn: EC2WaitCondition
+    Properties:
+      ApplicationVersions:
+        - Description: Version 1.0
+          SourceBundle:
+            S3Bucket: !Ref EBBucket
+            S3Key: deploy/tomcat-eb.zip
+          VersionLabel: Initial Version
+  TomcatEnvironment:
+    Type: "AWS::ElasticBeanstalk::Environment"
+    DependsOn: WebApp
+    Properties:
+      ApplicationName: !Ref WebApp
+      SolutionStackName:
+        !Select [
+          1,
+          !Split [
+            '"',
+            !Select [
+              0,
+              !Split [
+                "}",
+                !Select [1, !Split [":", !GetAtt "EC2WaitCondition.Data"]],
+              ],
+            ],
+          ],
+        ]
+      VersionLabel: Initial Version
+      EnvironmentName: !Ref EnvType
+      Tier:
+        Name: WebServer
+        Type: Standard
+        Version: " "
+      OptionSettings:
+        - Namespace: "aws:autoscaling:launchconfiguration"
+          OptionName: IamInstanceProfile
+          Value:
+            Fn::ImportValue: !Sub "${ParentStackName}-InstanceProfile"
+        - Namespace: "aws:elasticbeanstalk:environment"
+          OptionName: ServiceRole
+          Value:
+            Fn::ImportValue: !Sub "${ParentStackName}-ServiceRole"
+        - Namespace: aws:elasticbeanstalk:environment
+          OptionName: EnvironmentType
+          Value: LoadBalanced
+        - Namespace: aws:elasticbeanstalk:container:tomcat:jvmoptions
+          OptionName: Xms
+          Value: "512m"
+        - Namespace: aws:elasticbeanstalk:container:tomcat:jvmoptions
+          OptionName: Xmx
+          Value: "512m"
+        - Namespace: aws:elasticbeanstalk:container:tomcat:jvmoptions
+          OptionName: JVM Options
+          Value: "-Xmn128m"
+        - Namespace: aws:elasticbeanstalk:environment:proxy
+          OptionName: GzipCompression
+          Value: "true"
+        - Namespace: aws:elasticbeanstalk:environment:proxy
+          OptionName: ProxyServer
+          Value: "nginx"
+        - Namespace: aws:autoscaling:asg
+          OptionName: MinSize
+          Value: !Ref WebAsgMin
+        - Namespace: aws:autoscaling:asg
+          OptionName: MaxSize
+          Value: !If [CreateProdResources, !Ref WebAsgMax, 1]
+        - Namespace: aws:autoscaling:launchconfiguration
+          OptionName: EC2KeyName
+          Value: !Ref "EC2KeyName"
+        - Namespace: aws:autoscaling:launchconfiguration
+          OptionName: InstanceType
+          Value: !Ref WebInstanceType
+        - Namespace: aws:autoscaling:launchconfiguration
+          OptionName: SecurityGroups
+          Value:
+            Fn::ImportValue: !Sub "${ParentStackName}-AppSG"
+        - Namespace: aws:autoscaling:launchconfiguration
+          OptionName: SSHSourceRestriction
+          Value: "tcp, 22, 22, 127.0.0.1/32"
+        - Namespace: aws:autoscaling:trigger
+          OptionName: MeasureName
+          Value: CPUUtilization
+        - Namespace: aws:autoscaling:trigger
+          OptionName: Unit
+          Value: Percent
+        - Namespace: aws:autoscaling:trigger
+          OptionName: UpperThreshold
+          Value: "80"
+        - Namespace: aws:autoscaling:trigger
+          OptionName: LowerThreshold
+          Value: "20"
+        - Namespace: aws:autoscaling:updatepolicy:rollingupdate
+          OptionName: MaxBatchSize
+          Value: "1"
+        - Namespace: aws:autoscaling:updatepolicy:rollingupdate
+          OptionName: MinInstancesInService
+          Value: "0"
+        - Namespace: aws:autoscaling:updatepolicy:rollingupdate
+          OptionName: RollingUpdateEnabled
+          Value: "true"
+        - Namespace: aws:autoscaling:updatepolicy:rollingupdate
+          OptionName: RollingUpdateType
+          Value: Health
+        - Namespace: aws:ec2:vpc
+          OptionName: AssociatePublicIpAddress
+          Value: "true"
+        - Namespace: aws:ec2:vpc
+          OptionName: ELBSubnets
+          Value: !Join
+            - ","
+            - - Fn::ImportValue: !Sub "${ParentStackName}-PublicSubnet1ID"
+              - Fn::ImportValue: !Sub "${ParentStackName}-PublicSubnet2ID"
+        - Namespace: aws:ec2:vpc
+          OptionName: Subnets
+          Value: !Join
+            - ","
+            - - Fn::ImportValue: !Sub "${ParentStackName}-PublicSubnet1ID"
+              - Fn::ImportValue: !Sub "${ParentStackName}-PublicSubnet2ID"
+        - Namespace: aws:ec2:vpc
+          OptionName: VPCId
+          Value:
+            Fn::ImportValue: !Sub "${ParentStackName}-PublicVPCID"
+        - Namespace: aws:elasticbeanstalk:command
+          OptionName: DeploymentPolicy
+          Value: Rolling
+        - Namespace: aws:elasticbeanstalk:environment
+          OptionName: LoadBalancerType
+          Value: application
+        - Namespace: aws:elasticbeanstalk:healthreporting:system
+          OptionName: SystemType
+          Value: enhanced
+        - Namespace: aws:elbv2:loadbalancer
+          OptionName: SecurityGroups
+          Value:
+            Fn::ImportValue: !Sub "${ParentStackName}-PublicSG"
+        - Namespace: aws:elbv2:loadbalancer
+          OptionName: ManagedSecurityGroup
+          Value:
+            Fn::ImportValue: !Sub "${ParentStackName}-PublicSG"
+        - Namespace: aws:elasticbeanstalk:environment:process:default
+          OptionName: StickinessEnabled
+          Value: true
+
+  TempEC2Instance:
+    Type: AWS::EC2::Instance
+    Metadata:
+      AWS::CloudFormation::Init:
+        config:
+          files:
+            /tmp/mount-efs.config:
+              content: !Sub
+                - |
+                  packages:
+                    yum:
+                      amazon-efs-utils: []
+                  files:
+                    "/tmp/mount-efs.sh":
+                          mode: "000755"
+                          content : |
+                            #!/bin/bash
+
+                            echo "Mounting EFS filesystem ${EfsID} to directory ${EFS_MOUNT_DIR} ..."
+                            echo 'Stopping NFS ID Mapper...'
+                            
+                            service rpcidmapd status &> /dev/null
+                            if [ $? -ne 0 ] ; then
+                                echo 'rpc.idmapd is already stopped!'
+                            else
+                                service rpcidmapd stop
+                                if [ $? -ne 0 ] ; then
+                                    echo 'ERROR: Failed to stop NFS ID Mapper!'
+                                    exit 1
+                                fi
+                            fi
+
+                            echo 'Checking if EFS mount directory exists...'
+                            if [ ! -d ${EFS_MOUNT_DIR} ]; then
+                                echo "Creating directory ${EFS_MOUNT_DIR} ..."
+                                mkdir -p ${EFS_MOUNT_DIR}
+                                if [ $? -ne 0 ]; then
+                                    echo 'ERROR: Directory creation failed!'
+                                    exit 1
+                                fi
+                            else
+                                echo "Directory ${EFS_MOUNT_DIR} already exists!"
+                            fi
+
+                            mountpoint -q ${EFS_MOUNT_DIR}
+                            if [ $? -ne 0 ]; then
+                                echo "mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 ${EfsID}.efs.ap-southeast-2.amazonaws.com:/ ${EFS_MOUNT_DIR}"
+                                mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 ${EfsID}.efs.ap-southeast-2.amazonaws.com:/ ${EFS_MOUNT_DIR}
+                                if [ $? -ne 0 ] ; then
+                                    echo 'ERROR: Mount command failed!'
+                                    exit 1
+                                fi
+                                chmod 777 ${EFS_MOUNT_DIR}
+                                runuser -l  ec2-user -c "touch ${EFS_MOUNT_DIR}/it_works"
+                                if [[ $? -ne 0 ]]; then
+                                    echo 'ERROR: Permission Error!'
+                                    exit 1
+                                else
+                                    runuser -l  ec2-user -c "rm -f ${EFS_MOUNT_DIR}/it_works"
+                                fi
+                            else
+                                echo "Directory ${EFS_MOUNT_DIR} is already a valid mountpoint!"
+                            fi
+
+                            echo 'EFS mount complete.'
+                         
+                  commands:
+                    01_mount:
+                      command: "/tmp/mount-efs.sh"
+                    02_copy_static_data:
+                      command: 'aws s3 cp s3://${EBBucket}/static ${EFS_MOUNT_DIR}/static --recursive '
+                    03_copy_db_file:
+                      command: 'aws s3 cp s3://${EBBucket}/db ${EFS_MOUNT_DIR}/db'
+                - { EFS_MOUNT_DIR: "files" }
+              mode: 000500
+              owner: root
+              group: root
+            /tmp/mapping.config:
+              content: |
+                option_settings:
+                  - namespace: aws:elasticbeanstalk:environment:proxy:staticfiles
+                    option_name: /static
+                    value: /opt/elasticbeanstalk/eb_infra/files/static
+              mode: 000500
+              owner: root
+              group: root
+    Properties:
+      InstanceInitiatedShutdownBehavior: "terminate"
+      KeyName: !Ref "EC2KeyName"
+      IamInstanceProfile:
+        Fn::ImportValue: !Sub "${ParentStackName}-InstanceProfile"
+      ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMI]
+      InstanceType: !If [CreateProdResources, c1.xlarge, t2.micro]
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          #Use cfn-init to grab and apply the files specified in the above UserData
+          /opt/aws/bin/cfn-init --verbose --stack ${AWS::StackName} --resource TempEC2Instance --region ${AWS::Region}
+          mkdir -p /tmp/tomcat/.ebextensions/
+          #Copy all of the configuration files and scripts we want Elastic Beanstalk to run into the source file
+          cp /tmp/mount-efs.config /tmp/tomcat/.ebextensions/ 
+          cp /tmp/mapping.config /tmp/tomcat/.ebextensions/ 
+          cd /tmp/tomcat
+          aws s3 cp s3://${EBBucket}/java/ ./ --recursive
+          zip -r tomcat-eb.zip .
+          aws s3 cp tomcat-eb.zip s3://${EBBucket}/deploy/
+          export SOLUTION_STACK=`aws elasticbeanstalk list-available-solution-stacks --region ${AWS::Region} | grep "Tomcat 8" | head -1 | cut -d \" -f2`
+          /opt/aws/bin/cfn-signal --stack ${AWS::StackName} --region ${AWS::Region} "${EC2WaitHandle}" -d "$SOLUTION_STACK"
+          #Shutdown and terminate this temporary instance 
+          sleep 600
+          shutdown -h now
+
+  EC2WaitCondition:
+    Type: "AWS::CloudFormation::WaitCondition"
+    DependsOn: "TempEC2Instance"
+    Properties:
+      Handle:
+        Ref: "EC2WaitHandle"
+      Timeout: "3600"
+      Count: 1
+  EC2WaitHandle:
+    Type: "AWS::CloudFormation::WaitConditionHandle"

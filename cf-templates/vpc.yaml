@@ -1,0 +1,271 @@
+Resources:
+  PublicVPC:
+    Type: "AWS::EC2::VPC"
+    Properties:
+      CidrBlock: 172.31.0.0/16
+      EnableDnsHostnames: True
+      EnableDnsSupport: True
+      Tags:
+        - Key: Name
+          Value: !Join [_, [!Ref "AWS::StackName"]]
+  PublicSubnet1:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      VpcId: !Ref PublicVPC
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ""
+      CidrBlock: 172.31.0.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Join [_, [!Ref "AWS::StackName", Public]]
+  PublicSubnet2:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: ""
+      VpcId: !Ref PublicVPC
+      CidrBlock: 172.31.1.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Join [_, [!Ref "AWS::StackName", Public]]
+  InternetGateway:
+    Type: "AWS::EC2::InternetGateway"
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Join [_, [!Ref "AWS::StackName"]]
+  GatewayToInternet:
+    Type: "AWS::EC2::VPCGatewayAttachment"
+    Properties:
+      VpcId: !Ref PublicVPC
+      InternetGatewayId: !Ref InternetGateway
+  PublicRouteTable:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref PublicVPC
+  PublicRoute:
+    Type: "AWS::EC2::Route"
+    DependsOn: GatewayToInternet
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  PublicSubnet1RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+  PublicSubnet2RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+  #Elastic Beanstalk IAM Roles
+  ServiceRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: ""
+            Effect: Allow
+            Principal:
+              Service: elasticbeanstalk.amazonaws.com
+            Action: "sts:AssumeRole"
+            Condition:
+              StringEquals:
+                "sts:ExternalId": elasticbeanstalk
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "elasticloadbalancing:DescribeInstanceHealth"
+                  - "elasticloadbalancing:DescribeLoadBalancers"
+                  - "elasticloadbalancing:DescribeTargetHealth"
+                  - "ec2:DescribeInstances"
+                  - "ec2:DescribeInstanceStatus"
+                  - "ec2:GetConsoleOutput"
+                  - "ec2:AssociateAddress"
+                  - "ec2:DescribeAddresses"
+                  - "ec2:DescribeSecurityGroups"
+                  - "sqs:GetQueueAttributes"
+                  - "sqs:GetQueueUrl"
+                  - "autoscaling:DescribeAutoScalingGroups"
+                  - "autoscaling:DescribeAutoScalingInstances"
+                  - "autoscaling:DescribeScalingActivities"
+                  - "autoscaling:DescribeNotificationConfigurations"
+                Resource:
+                  - "*"
+  InstanceProfile:
+    Type: "AWS::IAM::InstanceProfile"
+    Properties:
+      Roles:
+        - !Ref InstanceProfileRole
+  InstanceProfileRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Sid: BucketAccess
+                Action:
+                  - "s3:Get*"
+                  - "s3:List*"
+                  - "s3:PutObject"
+                Effect: Allow
+                Resource:
+                  - !Join
+                    - ""
+                    - - "arn:aws"
+                      - ":s3:::elasticbeanstalk-*-"
+                      - !Ref "AWS::AccountId"
+                  - !Join
+                    - ""
+                    - - "arn:aws"
+                      - ":s3:::elasticbeanstalk-*-"
+                      - !Ref "AWS::AccountId"
+                      - /*
+                  - !Join
+                    - ""
+                    - - "arn:aws"
+                      - ":s3:::elasticbeanstalk-*-"
+                      - !Ref "AWS::AccountId"
+                      - "-*"
+                  - !Join
+                    - ""
+                    - - "arn:aws"
+                      - ":s3:::elasticbeanstalk-*-"
+                      - !Ref "AWS::AccountId"
+                      - "-*/*"
+                  - !Join
+                    - ""
+                    - - "arn:aws"
+                      - ":s3:::webapp-artifacts"
+                      - "-*/*"
+                  - !Join
+                    - ""
+                    - - "arn:aws"
+                      - ":s3:::webapp-artifacts"
+                      - "-*"
+              - Sid: EBAccess
+                Action:
+                  - "elasticbeanstalk:List*"
+                Effect: Allow
+                Resource: "*"
+              - Sid: MetricsAccess
+                Action:
+                  - "cloudwatch:PutMetricData"
+                Effect: Allow
+                Resource: "*"
+              - Sid: EncryptedEBS
+                Action:
+                  - "ec2:CreateVolume"
+                  - "ec2:AttachVolume"
+                  - "ec2:ModifyInstanceAttribute"
+                  - "ec2:Describe*"
+                Effect: Allow
+                Resource: "*"
+  #Security Groups for the three tiered network architecture
+  PublicSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group for Load Balancers
+      VpcId: !Ref PublicVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: "80"
+          ToPort: "80"
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: Public Security Group
+  AppSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group for Application Servers
+      VpcId: !Ref PublicVPC
+      Tags:
+        - Key: Name
+          Value: App Security Group
+  AppSGIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    DependsOn: AppSG
+    Properties:
+      GroupId: !Ref AppSG
+      IpProtocol: -1
+      SourceSecurityGroupId: !Ref AppSG
+  AppSGIngress2:
+    Type: AWS::EC2::SecurityGroupIngress
+    DependsOn: AppSG
+    Properties:
+      GroupId: !Ref AppSG
+      IpProtocol: tcp
+      FromPort: "80"
+      ToPort: "80"
+      SourceSecurityGroupId: !Ref PublicSG
+  AppSGIngress3:
+    Type: AWS::EC2::SecurityGroupIngress
+    DependsOn: AppSG
+    Properties:
+      GroupId: !Ref AppSG
+      IpProtocol: tcp
+      FromPort: "2049"
+      ToPort: "2049"
+      SourceSecurityGroupId: !Ref AppSG
+Outputs:
+  PublicVPCID:
+    Description: VPC ID
+    Value: !Ref "PublicVPC"
+    Export:
+      Name: !Join [-, [!Ref "AWS::StackName", PublicVPCID]]
+  PublicSubnet1ID:
+    Description: Public Subnet A ID
+    Value: !Ref "PublicSubnet1"
+    Export:
+      Name: !Join [-, [!Ref "AWS::StackName", PublicSubnet1ID]]
+  PublicSubnet2ID:
+    Description: Public Subnet B ID
+    Value: !Ref "PublicSubnet2"
+    Export:
+      Name: !Join [-, [!Ref "AWS::StackName", PublicSubnet2ID]]
+  AppSG:
+    Description: AppSG
+    Value: !Ref "AppSG"
+    Export:
+      Name: !Join [-, [!Ref "AWS::StackName", AppSG]]
+  PublicSG:
+    Description: PublicSG
+    Value: !Ref "PublicSG"
+    Export:
+      Name: !Join [-, [!Ref "AWS::StackName", PublicSG]]
+  ServiceRole:
+    Description: ServiceRole
+    Value: !Ref "ServiceRole"
+    Export:
+      Name: !Join [-, [!Ref "AWS::StackName", ServiceRole]]
+  InstanceProfile:
+    Description: InstanceProfile
+    Value: !Ref "InstanceProfile"
+    Export:
+      Name: !Join [-, [!Ref "AWS::StackName", InstanceProfile]]

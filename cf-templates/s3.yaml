@@ -1,0 +1,16 @@
+Parameters:
+  EnvType:
+    Description: Environment type.
+    Default: training
+    Type: String
+    AllowedValues: [production, training]
+    ConstraintDescription: must specify production, training.
+Resources:
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Join
+        - "-"
+        - - "webapp-artifacts"
+          - !Ref EnvType
