@@ -39,6 +39,16 @@ EFS_FILE_SYSTEM_ID=$(aws  --region ap-southeast-2 \
     --query 'Stacks[0].Outputs[?OutputKey==`FileSystem`].OutputValue' \
     --output text)
 
+if [[ $deploy = "training" ]]
+then
+   WebInstanceType="t2.small"
+elif [[ $deploy =  "production" ]]
+then
+   WebInstanceType="c1.xlarge" 
+else
+   WebInstanceType="t2.micro" 
+fi
+
 aws cloudformation deploy \
     --stack-name "${STACK_NAME}-eb" \
     --template-file "${DIR}/cf-templates/ebapp.yaml" \
@@ -46,6 +56,7 @@ aws cloudformation deploy \
     --capabilities CAPABILITY_IAM \
     --parameter-overrides \
     ParentStackName="${STACK_NAME}" \
+    WebInstanceType="${WebInstanceType}" \
     WebAsgMax=5 \
     EfsID="${EFS_FILE_SYSTEM_ID}" \
     EBBucket="${ARTIFACTS_BUCKET_NAME}" \

@@ -33,6 +33,7 @@ Parameters:
       - m3.2xlarge
       - m4.large
       - m4.xlarge
+      - c1.xlarge
     ConstraintDescription: Must be a valid Amazon EC2 instance type.
     Default: t2.micro
     Description: The Amazon EC2 instance type for your web instances.
@@ -309,7 +310,7 @@ Resources:
       IamInstanceProfile:
         Fn::ImportValue: !Sub "${ParentStackName}-InstanceProfile"
       ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMI]
-      InstanceType: !If [CreateProdResources, c1.xlarge, t2.micro]
+      InstanceType: t2.micro
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
