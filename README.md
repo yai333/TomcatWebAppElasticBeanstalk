@@ -70,18 +70,10 @@ $bash deploy.sh
 
 <b>Note:</b> There are few variables in `deploy.sh` and `deploy-s3.sh` like REGION, STACK_NAME, you can modify them to yours one.
 
-## Limited Produciton release
+## Production environment for the limited release
 
-- Limit production release to specfic IP ranges:
-  You can add a <b>Inbound Rule</b> of Load balancer's security group, set specific IP to port 80 or 443.
+You can change Max size of autoscalling max size to reduce of enhance availability and reliability. to do that open `deploy.sh` and set `WEB_ASG_MAX` value to smaller or larger number. eg. 1. and then redeploy the stack by run `$bash deploy.sh`.
 
-      To get security group name of deployed Load balancer from previous steps, visist AWS conosole page, find you stack eg. webapp-production-vpc, click resources tab, find `PublicSG` and click the link to Security Group setting page.
+Alternatively you can go to AWS Autoscaling console, manually set the Desired Capacity, Min or Max value.
 
-  ![Screenshot](sc-1.png)
-
-  Update Inbound rule:
-  ![Screenshot](sc-2.png)
-
-- Use Blue/Green Deployement stragegy
-
-        Suppose you already have an early version running production environment, you want to deploy a new limited production envirnmnet. What you need is that deploy a new EB environment, whenever you want to move it to fully production, use Elastic Beanstalk <b>Swap URL</b> for environments, swap CNAMEs between limited production and production, that is all about it.
+![screenshot](asf_fleet_mod_1.png)
