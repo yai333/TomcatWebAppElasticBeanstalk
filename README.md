@@ -30,29 +30,29 @@ App is deployed Elastic Beanstalk environment, Statics files and DB files are st
 
 ### 1. Deploy S3 Artifacts, upload artifacts files to be used by Elastic Beanstalk
 
-    Argument: -d training|production
+Argument: -d training|production
 
-    ```
-    $bash deploy-s3.sh -d training
-    ```
+```
+$bash deploy-s3.sh -d training
+```
 
-    Retrieve deployed s3 bucket name, then upload static files to `/static`
+Retrieve deployed s3 bucket name, then upload static files to `/static`
 
-    ```
-    aws s3 cp YOUR_STATIC_FILES_Path/ s3://DEPLOYED_S3_BUCKET/static --recursive
-    ```
+```
+aws s3 cp YOUR_STATIC_FILES_Path/ s3://DEPLOYED_S3_BUCKET/static --recursive
+```
 
-    Upload DB file to root path
+Upload DB file to root path
 
-    ```
-    aws s3 cp YOUR_DB_FILE s3://DEPLOYED_S3_BUCKET
-    ```
+```
+aws s3 cp YOUR_DB_FILE s3://DEPLOYED_S3_BUCKET
+```
 
-    Upload `.war` file to `/java` level
+Upload `.war` file to `/java` level
 
-    ```
-    aws s3 cp YOUR_DB_FILE s3://DEPLOYED_S3_BUCKET/java
-    ```
+```
+aws s3 cp YOUR_DB_FILE s3://DEPLOYED_S3_BUCKET/java
+```
 
 #### 2. Deploy VPC, subsets, security groups and stack related roles.
 
@@ -62,13 +62,13 @@ App is deployed Elastic Beanstalk environment, Statics files and DB files are st
 
 #### 5. Deploy `.war` from S3 to AWS Elastic Beanstalk
 
-    Simply run below commend:
+Simply run below commend:
 
-    ```
-    $bash deploy.sh
-    ```
+```
+$bash deploy.sh
+```
 
-    <b>Note:</b> There are few variables in `deploy.sh` and `deploy-s3.sh` like REGION, STACK_NAME, you can modify them to yours one.
+<b>Note:</b> There are few variables in `deploy.sh` and `deploy-s3.sh` like REGION, STACK_NAME, you can modify them to yours one.
 
 ## Production environment for the limited release
 
