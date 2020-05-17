@@ -13,6 +13,7 @@ REGION="ap-southeast-2"
 STACK_NAME="webapp-$deploy"
 ARTIFACTS_BUCKET_NAME="webapp-artifacts-$deploy"
 WEB_ASG_MAX=5
+EC2_KEY_PAIR="mykey"
 
 
 echo ">>>Deploy VPC and Security Groups. Env: $deploy<<<"
@@ -60,7 +61,7 @@ aws cloudformation deploy \
     WebAsgMax=5 \
     EfsID="${EFS_FILE_SYSTEM_ID}" \
     EBBucket="${ARTIFACTS_BUCKET_NAME}" \
-    EC2KeyName="emr" \
+    EC2KeyName="${EC2_KEY_PAIR}" \
     EnvType="${deploy}" 
 
 # CREATE_STACK_STATUS=$(aws --region ${REGION} cloudformation describe-stacks \
